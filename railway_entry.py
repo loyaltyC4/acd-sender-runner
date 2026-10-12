@@ -12,14 +12,34 @@ Env vars (Railway service variables):
   MAX_SENDS_PER_RUN        — per-run cap (45)
   RUN_INTERVAL_SECONDS     — 7200
 """
-import os, time, sys
+import json, os, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import send  # the sender engine (send.py in this repo)
 
 INTERVAL = int(os.environ.get("RUN_INTERVAL_SECONDS", "7200"))
+STATE_DIR = os.environ.get("STATE_DIR", "/data")
+
+def seed_state():
+    raw = os.environ.get("STATE_SEED")
+    if not raw:
+        return
+    try:
+        seed = json.loads(raw)
+    except Exception as e:
+        print(f"[entry] STATE_SEED parse failed: {e}", flush=True)
+        return
+    os.makedirs(STATE_DIR, exist_ok=True)
+    for fname, content in seed.items():
+        path = os.path.join(STATE_DIR, fname)
+        if os.path.exists(path):
+            continue  # never overwrite live state
+        with open(path, "w") as fh:
+            fh.write(content)
+        print(f"[entry] seeded {fname} ({len(content)} bytes)", flush=True)
 
 if __name__ == "__main__":
+    seed_state()
     while True:
         try:
             send.main()
