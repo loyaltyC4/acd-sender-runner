@@ -20,38 +20,49 @@ import send  # the sender engine (send.py in this repo)
 INTERVAL = int(os.environ.get("RUN_INTERVAL_SECONDS", "7200"))
 STATE_DIR = os.environ.get("STATE_DIR", "/data")
 
+def _fetch(url, token):
+    import urllib.request
+    req = urllib.request.Request(url, headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.raw+json",
+        "X-GitHub-Api-Version": "2022-11-28"})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return resp.read().decode()
+
 def seed_state():
     os.makedirs(os.path.join(STATE_DIR, "campaigns"), exist_ok=True)
-    # campaigns: seed /data/campaigns from CAMPAIGNS_SEED (map of filename -> content)
-    raw = os.environ.get("CAMPAIGNS_SEED")
-    if raw:
+    repo = os.environ.get("SEED_REPO")  # owner/repo of the private state repo
+    token = os.environ.get("SEED_GITHUB_TOKEN")
+    if not (repo and token):
+        print("[entry] no SEED_REPO/SEED_GITHUB_TOKEN — skipping seed", flush=True)
+        return
+    base = f"https://api.github.com/repos/{repo}/contents"
+    # campaigns
+    for fname in ["ndis_coordinators.json", "hcp_providers.json", "plan_managers.json",
+                  "support_agencies.json", "disability_providers.json"]:
+        path = os.path.join(STATE_DIR, "campaigns", fname)
+        if os.path.exists(path) and os.path.getsize(path) > 100:
+            continue
         try:
-            camp = json.loads(raw)
-            for fname, content in camp.items():
-                path = os.path.join(STATE_DIR, "campaigns", fname)
-                if os.path.exists(path):
-                    continue  # live campaigns win
-                with open(path, "w") as fh:
-                    fh.write(content)
-                print(f"[entry] seeded campaigns/{fname} ({len(content)} bytes)", flush=True)
+            content = _fetch(f"{base}/campaigns/{fname}", token)
+            with open(path, "w") as fh:
+                fh.write(content)
+            print(f"[entry] seeded campaigns/{fname} ({len(content)} bytes)", flush=True)
         except Exception as e:
-            print(f"[entry] CAMPAIGNS_SEED parse failed: {e}", flush=True)
-    # state: seed /data from STATE_SEED (map of filename -> content)
-    raw = os.environ.get("STATE_SEED")
-    if not raw:
-        return
-    try:
-        seed = json.loads(raw)
-    except Exception as e:
-        print(f"[entry] STATE_SEED parse failed: {e}", flush=True)
-        return
-    for fname, content in seed.items():
+            print(f"[entry] campaigns/{fname} seed failed: {e}", flush=True)
+    # state files
+    for fname in ["sent_emails.json", "inbox_state.json", "engaged.json",
+                  "org_blocks.json", "sent_log.jsonl", "forwarded_ids.json"]:
         path = os.path.join(STATE_DIR, fname)
-        if os.path.exists(path):
+        if os.path.exists(path) and os.path.getsize(path) > 2:
             continue  # never overwrite live state
-        with open(path, "w") as fh:
-            fh.write(content)
-        print(f"[entry] seeded {fname} ({len(content)} bytes)", flush=True)
+        try:
+            content = _fetch(f"{base}/{fname}", token)
+            with open(path, "w") as fh:
+                fh.write(content)
+            print(f"[entry] seeded {fname} ({len(content)} bytes)", flush=True)
+        except Exception as e:
+            print(f"[entry] {fname} seed failed (may not exist yet): {e}", flush=True)
 
 if __name__ == "__main__":
     seed_state()
