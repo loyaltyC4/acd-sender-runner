@@ -77,11 +77,13 @@ We dispatch mobility and daily-living equipment Australia-wide from Melbourne: r
 
 If it would help to have a supplier on file who quotes same-day, reply with any current equipment need, even one item, and you will have pricing before you log off today.
 
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
+
 Regards,
 Sylvester
 Aged Care Direct""")
     if step == 2:
-        return (f"invoice names, sorted ({biz})",
+        return (f"equipment invoices that clear first time ({biz})",
 f"""Hi {f},
 
 A follow-up with something useful: the most common equipment-claim hiccup we see from coordinators is the invoice name. Plan managers bounce it, the coordinator re-raises it, the participant waits another week.
@@ -89,6 +91,8 @@ A follow-up with something useful: the most common equipment-claim hiccup we see
 We invoice in exactly the name the claim needs, participant or plan manager, first time. Same-day quotes, Australia-wide delivery from Melbourne, no account setup.
 
 Reply with any current equipment need and pricing is back today. If you would rather just have our price list on file, reply "price list" and I will send it across.
+
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
 
 Regards,
 Sylvester
@@ -116,6 +120,8 @@ We send quotes the same day for bathroom safety, commodes, walking aids, and bed
 
 If you want a supplier who turns quotes around the same day, reply with any current client equipment need and you will have pricing today.
 
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
+
 Regards,
 Sylvester
 Aged Care Direct""")
@@ -128,6 +134,8 @@ One useful thing: most providers we talk to keep one backup equipment supplier o
 Same-day quotes, Australia-wide delivery from Melbourne, invoices in the client or case-manager name for clean package claims, no minimums.
 
 Reply with any current client need, or reply "price list" and I will send our current pricing across for the items your managers order most.
+
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
 
 Regards,
 Sylvester
@@ -155,6 +163,8 @@ We quote equipment the same day, invoice correctly for plan-managed claims, and 
 
 If faster, cleaner equipment claims would help your participants, reply with any current need and you will have the quote today.
 
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
+
 Regards,
 Sylvester
 Aged Care Direct""")
@@ -167,6 +177,8 @@ The concrete version: when a coordinator sources equipment badly, the invoice ar
 Our invoices come out in the participant or plan-manager name, first time, so claims clear without the email trail. Same-day quotes, Australia-wide delivery from Melbourne.
 
 Reply "price list" for the current pricing, or with any participant need and the quote is back today.
+
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
 
 Regards,
 Sylvester
@@ -194,11 +206,13 @@ We quote same-day on daily-living and mobility equipment, deliver Australia-wide
 
 Reply with any current client need, one item or ten, and the quote is back today.
 
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
+
 Regards,
 Sylvester
 Aged Care Direct""")
     if step == 2:
-        return (f"when a client home needs gear this week ({biz})",
+        return (f"a shower chair by Friday, not next month ({biz})",
 f"""Hi {f},
 
 The practical version: when a client home suddenly needs a commode, rail, or shower chair this week, a same-day quote is the difference between sorted Friday and sorted next month.
@@ -206,6 +220,8 @@ The practical version: when a client home suddenly needs a commode, rail, or sho
 We quote the day you ask, deliver Australia-wide from Melbourne, invoice in the participant name. No account, no minimums.
 
 Reply "price list" and I will send current pricing across, or send any live need and the quote is back today.
+
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
 
 Regards,
 Sylvester
@@ -233,6 +249,8 @@ We quote the same day on mobility, bathroom safety, commodes, hoists, and bedroo
 
 Reply with any current equipment need and you will have pricing before end of day.
 
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
+
 Regards,
 Sylvester
 Aged Care Direct""")
@@ -245,6 +263,8 @@ Where we get used most: SIL and respite fit-outs and participant home setups, be
 We quote same-day, deliver Australia-wide from Melbourne, invoice in the participant or plan-manager name. No account, no minimums.
 
 Reply "price list" for current pricing, or with any live need and the quote is back today.
+
+P.S. If this is not useful, reply "remove" and you will not hear from me again.
 
 Regards,
 Sylvester
