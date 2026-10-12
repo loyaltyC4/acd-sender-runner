@@ -324,10 +324,12 @@ def main():
     now = datetime.now(timezone.utc)
     for org, until in list(blocks.items()):
         try:
-            if datetime.strptime(until, "%Y-%m-%dT%H:%M:%S%z") <= now:
+            t = until.replace("Z", "+00:00")
+            t = re.sub(r"\.(\d{1,6})\+00:00", lambda m: "." + m.group(1).ljust(6, "0") + "+00:00", t)
+            if datetime.fromisoformat(t) <= now:
                 print(f"org block lifted: {org}"); del blocks[org]
         except Exception:
-            del blocks[org]
+            pass  # keep block on parse failure — safer than silently unblocking
     save_json(os.path.join(STATE_DIR, "org_blocks.json"), blocks)
 
     # build the send plan: due sequence steps for leads not engaged
@@ -357,17 +359,14 @@ def main():
     print(f"planned {len(plan)} sends this run")
 
     log = open(os.path.join(STATE_DIR, "sent_log.jsonl"), "a")
-    n, parked, ai = 0, set(), 0
+    n, parked, ai = 0, set(), -1
     for i, (cname, lead, step) in enumerate(plan):
+        # recompute available (org, inbox) pairs fresh each iteration
+        avail = [(oe, ib) for oe, ibs in inboxes_by_org.items() if oe not in blocks and oe not in parked
+                 for ib in ibs if today_counts.get(ib, 0) < INBOX_DAILY_CAP]
         if not avail: break
         ai = (ai + 1) % len(avail)
         org_env, inbox = avail[ai]
-        while org_env in parked or org_env in blocks or today_counts.get(inbox, 0) >= INBOX_DAILY_CAP:
-            avail = [a for a in avail if a[1] != inbox or (a[0] != org_env and today_counts.get(a[1], 0) < INBOX_DAILY_CAP)]
-            if not avail: break
-            ai = (ai + 1) % len(avail)
-            org_env, inbox = avail[ai]
-        if not avail: break
         key = os.environ.get(org_env)
         subj, body = SEQUENCES[cname](lead, step)
         to = (lead.get("email") or "").strip().lower()
