@@ -21,6 +21,22 @@ INTERVAL = int(os.environ.get("RUN_INTERVAL_SECONDS", "7200"))
 STATE_DIR = os.environ.get("STATE_DIR", "/data")
 
 def seed_state():
+    os.makedirs(os.path.join(STATE_DIR, "campaigns"), exist_ok=True)
+    # campaigns: seed /data/campaigns from CAMPAIGNS_SEED (map of filename -> content)
+    raw = os.environ.get("CAMPAIGNS_SEED")
+    if raw:
+        try:
+            camp = json.loads(raw)
+            for fname, content in camp.items():
+                path = os.path.join(STATE_DIR, "campaigns", fname)
+                if os.path.exists(path):
+                    continue  # live campaigns win
+                with open(path, "w") as fh:
+                    fh.write(content)
+                print(f"[entry] seeded campaigns/{fname} ({len(content)} bytes)", flush=True)
+        except Exception as e:
+            print(f"[entry] CAMPAIGNS_SEED parse failed: {e}", flush=True)
+    # state: seed /data from STATE_SEED (map of filename -> content)
     raw = os.environ.get("STATE_SEED")
     if not raw:
         return
@@ -29,7 +45,6 @@ def seed_state():
     except Exception as e:
         print(f"[entry] STATE_SEED parse failed: {e}", flush=True)
         return
-    os.makedirs(STATE_DIR, exist_ok=True)
     for fname, content in seed.items():
         path = os.path.join(STATE_DIR, fname)
         if os.path.exists(path):
