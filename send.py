@@ -280,7 +280,10 @@ Regards,
 Sylvester
 Aged Care Direct""")
 
+from tenderwin_seq import seq_tenderwin_winners
+
 SEQUENCES = {
+    "tenderwin_winners": seq_tenderwin_winners,
     "ndis_coordinators": seq_ndis_coordinators,
     "hcp_providers": seq_hcp_providers,
     "plan_managers": seq_plan_managers,
@@ -388,12 +391,14 @@ def main():
         ai = (ai + 1) % len(avail)
         org_env, inbox = avail[ai]
         key = os.environ.get(org_env)
-        subj, body = SEQUENCES[cname](lead, step)
+        res = SEQUENCES[cname](lead, step)
+        subj, body = res[0], res[1]
+        body_html = res[2] if len(res) > 2 else None
         to = (lead.get("email") or "").strip().lower()
         if DRY_RUN:
             print(f"DRY {inbox} -> {to} ({cname} step{step}) :: {subj}"); continue
         code, resp = api(key, f"/inboxes/{inbox}/messages/send",
-                         {"to": [to], "subject": subj, "body": {"text": body}})
+                         {"to": [to], "subject": subj, "text": body, **({"html": body_html} if body_html else {})})
         if code == 200:
             sent_map[to] = {"campaign": cname, "step": step, "inbox": inbox, "sent_at": now_iso()}
             today_counts[inbox] = today_counts.get(inbox, 0) + 1
