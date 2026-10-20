@@ -26,7 +26,7 @@ DRY_RUN = os.environ.get("DRY_RUN", "0") == "1"
 OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "slyvesterchiko1@gmail.com")
 INBOX_DAILY_CAP = int(os.environ.get("INBOX_DAILY_CAP", "3"))
 MAX_SENDS = int(os.environ.get("MAX_SENDS_PER_RUN", "40"))
-ORG_ENVS = [f"AGENTMAIL_ORG{i}_KEY" for i in range(1, 11)] + [f"AGENTMAIL_TW{i}_KEY" for i in range(1, 5)]
+ORG_ENVS = [f"AGENTMAIL_ORG{i}_KEY" for i in range(1, 11)] + [f"AGENTMAIL_TW{i}_KEY" for i in range(1, 7)]
 TW_MAX_STEP = int(os.environ.get("TW_MAX_STEP", "1"))
 # Owner-approved 2026-10-20: TenderWin inboxes (warmed since Oct 7) send up to 8/day; ACD stays on INBOX_DAILY_CAP (3).
 TW_INBOX_DAILY_CAP = int(os.environ.get("TW_INBOX_DAILY_CAP", "8"))
