@@ -413,7 +413,12 @@ def main():
             log.write(json.dumps({"ts": now_iso(), "inbox": inbox, "to": to, "campaign": cname,
                                   "step": step, "company": lead.get("company"), "subject": subj}) + "\n")
             log.flush(); n += 1
-            print(f"OK {inbox} -> {to} ({cname} step{step})")
+            arm = ""
+            if cname.startswith("tenderwin"):
+                from tenderwin_seq import variant_for
+                arm = f" v{variant_for(lead)}"
+                sent_map[to]["variant"] = arm.strip()
+            print(f"OK {inbox} -> {to} ({cname} step{step}{arm})")
         else:
             print(f"ERR {code} {inbox} -> {to} :: {resp}")
             if code == 429:
