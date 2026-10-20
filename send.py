@@ -27,7 +27,12 @@ OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "slyvesterchiko1@gmail.com")
 INBOX_DAILY_CAP = int(os.environ.get("INBOX_DAILY_CAP", "3"))
 MAX_SENDS = int(os.environ.get("MAX_SENDS_PER_RUN", "40"))
 ORG_ENVS = [f"AGENTMAIL_ORG{i}_KEY" for i in range(1, 11)] + [f"AGENTMAIL_TW{i}_KEY" for i in range(1, 5)]
-TW_MAX_STEP = int(os.environ.get("TW_MAX_STEP", "1"))  # TenderWin: step 1 only until the owner raises it
+TW_MAX_STEP = int(os.environ.get("TW_MAX_STEP", "1"))
+# Owner-approved 2026-10-20: TenderWin inboxes (warmed since Oct 7) send up to 8/day; ACD stays on INBOX_DAILY_CAP (3).
+TW_INBOX_DAILY_CAP = int(os.environ.get("TW_INBOX_DAILY_CAP", "8"))
+
+def cap_for(org_env):
+    return TW_INBOX_DAILY_CAP if org_env.startswith("AGENTMAIL_TW") else INBOX_DAILY_CAP  # TenderWin: step 1 only until the owner raises it
 
 def pool_ok(campaign, org_env):
     """TenderWin mail goes out only from the TenderWin orgs; every other campaign never uses them."""
@@ -299,7 +304,7 @@ SEQUENCES = {
 STEP_DELAYS = {1: 0, 2: 3, 3: 7}  # days after step 1
 
 def main():
-    print(f"[{now_iso()}] ACD sender v1 start (cap {INBOX_DAILY_CAP}/inbox/day, max {MAX_SENDS}/run)")
+    print(f"[{now_iso()}] ACD sender v1 start (cap {INBOX_DAILY_CAP}/inbox/day, TenderWin {TW_INBOX_DAILY_CAP}, max {MAX_SENDS}/run)")
     # discover inboxes per org
     inboxes_by_org, org_ok = {}, []
     for org_env in ORG_ENVS:
@@ -383,7 +388,7 @@ def main():
     print(f"due sends: {len(plan)} (engaged/replied: {len(engaged)}, already sent: {len(sent_map)})")
 
     avail = [(oe, ib) for oe, ibs in inboxes_by_org.items() if oe not in blocks
-             for ib in ibs if today_counts.get(ib, 0) < INBOX_DAILY_CAP]
+             for ib in ibs if today_counts.get(ib, 0) < cap_for(oe)]
     if not avail:
         print("all inboxes at daily cap or orgs blocked, exiting"); return
     plan = plan[:MAX_SENDS]
@@ -394,7 +399,7 @@ def main():
     for i, (cname, lead, step) in enumerate(plan):
         # recompute available (org, inbox) pairs fresh each iteration
         avail = [(oe, ib) for oe, ibs in inboxes_by_org.items() if oe not in blocks and oe not in parked and pool_ok(cname, oe)
-                 for ib in ibs if today_counts.get(ib, 0) < INBOX_DAILY_CAP]
+                 for ib in ibs if today_counts.get(ib, 0) < cap_for(oe)]
         if not avail: continue
         ai = (ai + 1) % len(avail)
         org_env, inbox = avail[ai]
