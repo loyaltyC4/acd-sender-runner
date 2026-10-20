@@ -379,6 +379,7 @@ def main():
                 if days >= STEP_DELAYS[step + 1]:
                     plan.append((cname, l, step + 1))
     random.shuffle(plan)
+    plan.sort(key=lambda x: 0 if x[0].startswith("tenderwin") else 1)  # TenderWin has its own inboxes and few leads: never let the ACD backlog crowd it out
     print(f"due sends: {len(plan)} (engaged/replied: {len(engaged)}, already sent: {len(sent_map)})")
 
     avail = [(oe, ib) for oe, ibs in inboxes_by_org.items() if oe not in blocks
