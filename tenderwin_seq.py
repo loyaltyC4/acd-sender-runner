@@ -11,11 +11,43 @@ Design (from the cold-email skill + the BidCheck premium template):
 Compliance (Spam Act 2003): identifies the sender and business, relevant to the recipient's role, working opt-out
 in every step. Only send to addresses that are publicly published for business use.
 """
-import html as _h, re
+import html as _h, re, json, time, datetime as _dt
+import urllib.request
+
+TRADE_RX = {"cleaning": r"clean|janitor|hygiene|laundry", "construction": r"construct|build|civil|refurb|maintenance|repair|electrical|plumb|roof|paint|fenc|landscap",
+            "ICT": r"software|\bict\b|cyber|cloud|digital|licen[cs]e|it support|network|web|telecom", "security": r"security|guard|surveillance|cctv",
+            "catering": r"cater|food|meal|kitchen", "professional services": r"consult|advis|review|audit|training|research|legal|recruit|project manage|evaluation",
+            "supplies": r"suppl|equipment|vehicle|furniture|uniform|stationery|print|medical|goods|purchase"}
+_CACHE = {"t": 0, "rows": []}
+
+def _all_tenders():
+    """Live AU tenders from TenderWin's own public API, cached for an hour so a sender pass makes one request."""
+    if time.time() - _CACHE["t"] < 3600 and _CACHE["rows"]:
+        return _CACHE["rows"]
+    try:
+        req = urllib.request.Request("https://tenderwin.com.au/api/tenders?limit=1000", headers={"User-Agent": "tenderwin-outreach/1.0"})
+        rows = json.load(urllib.request.urlopen(req, timeout=30)).get("tenders", [])
+        _CACHE.update(t=time.time(), rows=rows)
+    except Exception:
+        pass
+    return _CACHE["rows"]
+
+def live_for(trade, n=3):
+    """(total_open, [top n soonest-closing, at least 4 days out]) for a trade bucket."""
+    rx = re.compile(TRADE_RX.get(trade or "", r"$^"), re.I)
+    cut = (_dt.date.today() + _dt.timedelta(days=4)).isoformat()
+    rows = [r for r in _all_tenders() if (r.get("closes") or "") >= cut and rx.search(r.get("title") or "")]
+    rows.sort(key=lambda r: r["closes"])
+    out = []
+    for r in rows[:n]:
+        d = _dt.date.fromisoformat(r["closes"][:10]).strftime("%-d %b")
+        out.append({"title": (r.get("title") or "")[:80].rstrip(" ,-"), "buyer": r.get("buyer", ""), "closes": d, "state": r.get("province", ""),
+                    "url": f"https://tenderwin.com.au/tender/{r['ocid']}?utm_source=cold_email&utm_medium=email&utm_campaign=tw_oct26"})
+    return len(rows), out
 
 def _first(lead):
     n = _h.unescape(lead.get("contact_name") or "").split()
-    return n[0].capitalize() if n else "there"
+    return n[0].capitalize() if n else ((lead.get("company") or "").strip() + " team" if lead.get("company") else "there")
 
 def _sign(lead):
     n = re.split(r"[._\-0-9]", (lead.get("_from") or "").split("@")[0])[0].capitalize() or "The team"
@@ -30,20 +62,17 @@ def _hook(lead):
 
 def step1(lead):
     f, trade = _first(lead), lead.get("trade") or "your trade"
-    n = lead.get("live_count")
-    live = f"{n} {trade} tenders are open right now across federal and state portals" if n else f"there are {trade} tenders open right now across federal and state portals"
-    return (f"{lead.get('company') or 'Your team'}: open {trade} tenders",
-f"""Hi {f},
-
-{_hook(lead)}
-
-Most small suppliers find out about work like that after it closes. TenderWin pulls AusTender and the state portals into one search and matches each tender to your ABN, GST status and insurance, so {live}, and you can see which you actually qualify for.
-
-If it would help, reply "send" and I will email you this week's open {trade} tenders matched to your business. No signup.
-
-{OPT}
-
-{_sign(lead)}""", None)
+    total, tenders = live_for(lead.get("trade"))
+    if tenders:
+        lines = "\n".join(f"- {x['title']} ({x['buyer'].split(' - ')[0][:40]}{', ' + x['state'] if x['state'] else ''}), closes {x['closes']}\n  {x['url']}" for x in tenders)
+        body = (f"{_hook(lead)}\n\n{total} {trade} tenders are open on AusTender and the state portals right now. The ones closing soonest:\n\n{lines}\n\n"
+                f"All {total}, free to search: https://tenderwin.com.au/search?utm_source=cold_email&utm_medium=email&utm_campaign=tw_oct26\n\n"
+                f"TenderWin matches each one to your ABN, GST status and insurance, so you see which you actually qualify for. "
+                f"Reply \"yes\" and I'll check these three against {lead.get('company') or 'your business'}, or reply \"weekly\" and I'll email you every new {trade} tender each Monday, free.")
+    else:
+        body = (f"{_hook(lead)}\n\nMost small suppliers find out about work like that after it closes. TenderWin puts AusTender and the state portals in one search and matches "
+                f"each tender to your ABN, GST status and insurance. Reply \"weekly\" and I'll email you every new {trade} tender each Monday, free.")
+    return (f"{trade} tenders closing soon", f"Hi {f},\n\n{body}\n\n{OPT}\n\n{_sign(lead)}", None)
 
 def _row(t):
     return (f'<tr><td style="padding:14px 0;border-bottom:1px solid #EBECEE;">'
@@ -52,8 +81,9 @@ def _row(t):
 
 def step2(lead):
     f, trade = _first(lead), lead.get("trade") or "your trade"
-    tenders = (lead.get("live_tenders") or [])[:5]
-    n = lead.get("live_count") or len(tenders)
+    total, live5 = live_for(lead.get("trade"), 5)
+    tenders = (lead.get("live_tenders") or live5)[:5]
+    n = lead.get("live_count") or total or len(tenders)
     rows = "".join(_row(t) for t in tenders)
     subj = f"{n} open {trade} tenders matched to {lead.get('company') or 'you'}"
     text = (f"Hi {f},\n\nAs promised, open {trade} tenders right now:\n\n" +
