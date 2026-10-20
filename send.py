@@ -26,7 +26,13 @@ DRY_RUN = os.environ.get("DRY_RUN", "0") == "1"
 OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "slyvesterchiko1@gmail.com")
 INBOX_DAILY_CAP = int(os.environ.get("INBOX_DAILY_CAP", "3"))
 MAX_SENDS = int(os.environ.get("MAX_SENDS_PER_RUN", "40"))
-ORG_ENVS = [f"AGENTMAIL_ORG{i}_KEY" for i in range(1, 11)]
+ORG_ENVS = [f"AGENTMAIL_ORG{i}_KEY" for i in range(1, 11)] + [f"AGENTMAIL_TW{i}_KEY" for i in range(1, 5)]
+TW_MAX_STEP = int(os.environ.get("TW_MAX_STEP", "1"))  # TenderWin: step 1 only until the owner raises it
+
+def pool_ok(campaign, org_env):
+    """TenderWin mail goes out only from the TenderWin orgs; every other campaign never uses them."""
+    is_tw_org = org_env.startswith("AGENTMAIL_TW")
+    return is_tw_org == campaign.startswith("tenderwin")
 
 def load_json(path, default):
     try: return json.load(open(path))
@@ -280,7 +286,10 @@ Regards,
 Sylvester
 Aged Care Direct""")
 
+from tenderwin_seq import seq_tenderwin_winners
+
 SEQUENCES = {
+    "tenderwin_winners": seq_tenderwin_winners,
     "ndis_coordinators": seq_ndis_coordinators,
     "hcp_providers": seq_hcp_providers,
     "plan_managers": seq_plan_managers,
@@ -365,6 +374,7 @@ def main():
             else:
                 step = rec.get("step", 1)
                 if step >= 3: continue
+                if cname.startswith("tenderwin") and step + 1 > TW_MAX_STEP: continue
                 days = (now - datetime.fromisoformat(rec["sent_at"])).days
                 if days >= STEP_DELAYS[step + 1]:
                     plan.append((cname, l, step + 1))
@@ -382,18 +392,20 @@ def main():
     n, parked, ai = 0, set(), -1
     for i, (cname, lead, step) in enumerate(plan):
         # recompute available (org, inbox) pairs fresh each iteration
-        avail = [(oe, ib) for oe, ibs in inboxes_by_org.items() if oe not in blocks and oe not in parked
+        avail = [(oe, ib) for oe, ibs in inboxes_by_org.items() if oe not in blocks and oe not in parked and pool_ok(cname, oe)
                  for ib in ibs if today_counts.get(ib, 0) < INBOX_DAILY_CAP]
-        if not avail: break
+        if not avail: continue
         ai = (ai + 1) % len(avail)
         org_env, inbox = avail[ai]
         key = os.environ.get(org_env)
-        subj, body = SEQUENCES[cname](lead, step)
+        res = SEQUENCES[cname]({**lead, "_from": inbox}, step)
+        subj, body = res[0], res[1]
+        body_html = res[2] if len(res) > 2 else None
         to = (lead.get("email") or "").strip().lower()
         if DRY_RUN:
             print(f"DRY {inbox} -> {to} ({cname} step{step}) :: {subj}"); continue
         code, resp = api(key, f"/inboxes/{inbox}/messages/send",
-                         {"to": [to], "subject": subj, "body": {"text": body}})
+                         {"to": [to], "subject": subj, "text": body, **({"html": body_html} if body_html else {})})
         if code == 200:
             sent_map[to] = {"campaign": cname, "step": step, "inbox": inbox, "sent_at": now_iso()}
             today_counts[inbox] = today_counts.get(inbox, 0) + 1
