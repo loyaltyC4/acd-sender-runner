@@ -29,8 +29,18 @@ def _fetch(url, token):
     with urllib.request.urlopen(req, timeout=60) as resp:
         return resp.read().decode()
 
+def seed_tenderwin():
+    """TenderWin leads ride in as a base64 env var (TENDERWIN_LEADS_B64); the file is rewritten each boot so the owner can refresh leads by changing the var."""
+    import base64
+    b = os.environ.get("TENDERWIN_LEADS_B64")
+    if not b: return
+    os.makedirs(os.path.join(STATE_DIR, "campaigns"), exist_ok=True)
+    open(os.path.join(STATE_DIR, "campaigns", "tenderwin_winners.json"), "wb").write(base64.b64decode(b))
+    print("[entry] wrote campaigns/tenderwin_winners.json", flush=True)
+
 def seed_state():
     os.makedirs(os.path.join(STATE_DIR, "campaigns"), exist_ok=True)
+    seed_tenderwin()
     repo = os.environ.get("SEED_REPO")  # owner/repo of the private state repo
     token = os.environ.get("SEED_GITHUB_TOKEN")
     if not (repo and token):

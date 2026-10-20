@@ -11,13 +11,15 @@ Design (from the cold-email skill + the BidCheck premium template):
 Compliance (Spam Act 2003): identifies the sender and business, relevant to the recipient's role, working opt-out
 in every step. Only send to addresses that are publicly published for business use.
 """
-import html as _h
+import html as _h, re
 
 def _first(lead):
     n = _h.unescape(lead.get("contact_name") or "").split()
     return n[0].capitalize() if n else "there"
 
-SIGN = "Sylvester\nTenderWin | tenderwin.com.au"
+def _sign(lead):
+    n = re.split(r"[._\-0-9]", (lead.get("_from") or "").split("@")[0])[0].capitalize() or "The team"
+    return f"{n}\nTenderWin | tenderwin.com.au"
 OPT = 'P.S. Not relevant? Reply "remove" and you will not hear from me again.'
 
 def _hook(lead):
@@ -30,7 +32,7 @@ def step1(lead):
     f, trade = _first(lead), lead.get("trade") or "your trade"
     n = lead.get("live_count")
     live = f"{n} {trade} tenders are open right now across federal and state portals" if n else f"there are {trade} tenders open right now across federal and state portals"
-    return (f"{trade} tenders closing soon ({lead.get('company') or 'your team'})",
+    return (f"{lead.get('company') or 'Your team'}: open {trade} tenders",
 f"""Hi {f},
 
 {_hook(lead)}
@@ -41,7 +43,7 @@ If it would help, reply "send" and I will email you this week's open {trade} ten
 
 {OPT}
 
-{SIGN}""", None)
+{_sign(lead)}""", None)
 
 def _row(t):
     return (f'<tr><td style="padding:14px 0;border-bottom:1px solid #EBECEE;">'
@@ -56,7 +58,7 @@ def step2(lead):
     subj = f"{n} open {trade} tenders matched to {lead.get('company') or 'you'}"
     text = (f"Hi {f},\n\nAs promised, open {trade} tenders right now:\n\n" +
             "\n".join(f"- {t.get('title','')} ({t.get('buyer','')}, closes {t.get('closes','')}) {t.get('url','')}" for t in tenders) +
-            f"\n\nSearch is free at tenderwin.com.au. Reply with your ABN state and I will tell you which you qualify for.\n\n{OPT}\n\n{SIGN}")
+            f"\n\nSearch is free at tenderwin.com.au. Reply with your ABN state and I will tell you which you qualify for.\n\n{OPT}\n\n{_sign(lead)}")
     page = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"></head>
 <body style="margin:0;padding:0;background:#F4F5F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B0F14;">
 <div style="display:none;max-height:0;overflow:hidden;">{n} live {trade} tenders, matched to your ABN. Free to search.</div>
@@ -72,7 +74,7 @@ def step2(lead):
 <tr><td style="background:#fff;padding:18px 32px 30px;border-radius:0 0 18px 18px;">
 <a href="https://tenderwin.com.au/search" style="display:inline-block;background:#0A1F5C;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:13px 22px;border-radius:999px;">See all {n} tenders, free</a>
 <p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:#5B6475;">Reply with your state and ABN status and I will tell you which of these you qualify for.</p></td></tr>
-<tr><td style="padding:18px 8px 0;font-size:12px;line-height:1.5;color:#7B8593;">Sent by Sylvester at TenderWin (tenderwin.com.au). Not relevant? Reply "remove" and you will not hear from us again.</td></tr>
+<tr><td style="padding:18px 8px 0;font-size:12px;line-height:1.5;color:#7B8593;">Sent by {_h.escape(_sign(lead).splitlines()[0])} at TenderWin (tenderwin.com.au). Not relevant? Reply "remove" and you will not hear from us again.</td></tr>
 </table></td></tr></table></body></html>"""
     return subj, text, page
 
@@ -85,7 +87,7 @@ Last note. If winning more {trade} work is on the list, TenderWin's search is fr
 
 Reply "send" and I will email this week's matches, or "remove" and that is the end of it.
 
-{SIGN}""", None)
+{_sign(lead)}""", None)
 
 def seq_tenderwin_winners(lead, step):
     return {1: step1, 2: step2, 3: step3}[step](lead)
