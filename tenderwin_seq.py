@@ -60,18 +60,33 @@ def _hook(lead):
         return f"I saw {lead.get('company') or 'your business'} was awarded work by {b} ({m}) on the public AusTender record. Well done."
     return f"I came across {lead.get('company') or 'your business'} while looking at who is winning {lead.get('trade') or 'government'} work in {lead.get('state') or 'Australia'}."
 
+def variant_for(lead):
+    """Stable A/B arm per address: the same lead always gets the same arm."""
+    import hashlib
+    return "A" if int(hashlib.sha1((lead.get("email") or "").lower().encode()).hexdigest()[:8], 16) % 2 == 0 else "B"
+
+
+def _award_line(lead):
+    b, m = lead.get("award_buyer"), lead.get("award_month")
+    co = lead.get("company") or "your business"
+    if b and m:
+        return f"Saw {co} won work from {b} ({m}) on AusTender. Nice."
+    return f"Came across {co} while looking at who wins {lead.get('trade') or 'government'} work in Australia."
+
+
 def step1(lead):
-    f, trade = _first(lead), lead.get("trade") or "your trade"
+    """A = proof (three live tenders, reply-gated check). B = short question + free daily alerts. Both plain text, one ask."""
+    f, trade, co = _first(lead), lead.get("trade") or "your trade", lead.get("company") or "your business"
     total, tenders = live_for(lead.get("trade"))
-    if tenders:
-        lines = "\n".join(f"- {x['title']} ({x['buyer'].split(' - ')[0][:40]}{', ' + x['state'] if x['state'] else ''}), closes {x['closes']}\n  {x['url']}" for x in tenders)
-        body = (f"{_hook(lead)}\n\n{total} {trade} tenders are open on AusTender and the state portals right now. The ones closing soonest:\n\n{lines}\n\n"
-                f"All {total}, free to search: https://tenderwin.com.au/search?utm_source=cold_email&utm_medium=email&utm_campaign=tw_oct26\n\n"
-                f"TenderWin matches each one to your ABN, GST status and insurance, so you see which you actually qualify for. "
-                f"Reply \"yes\" and I'll check these three against {lead.get('company') or 'your business'}, or reply \"weekly\" and I'll email you every new {trade} tender each Monday, free.")
-    else:
-        body = (f"{_hook(lead)}\n\nMost small suppliers find out about work like that after it closes. TenderWin puts AusTender and the state portals in one search and matches "
-                f"each tender to your ABN, GST status and insurance. Reply \"weekly\" and I'll email you every new {trade} tender each Monday, free.")
+    if variant_for(lead) == "B" or not tenders:
+        n = f"{total} {trade} tenders are open" if total else f"{trade} tenders open every week"
+        body = (f"{_award_line(lead)}\n\nQuick question: who on your team watches for the next one?\n\n"
+                f"Right now {n} across AusTender and the state portals. TenderWin emails the ones that fit your ABN "
+                f"each morning, free.\n\nWant me to switch it on for {co}? Reply \"yes\" and I'll set it up.")
+        return (f"{co} + government work", f"Hi {f},\n\n{body}\n\n{OPT}\n\n{_sign(lead)}", None)
+    lines = "\n".join(f"- {x['title'][:70]} ({x['buyer'].split(' - ')[0][:35]}{', ' + x['state'] if x['state'] else ''}), closes {x['closes']}\n  {x['url']}" for x in tenders)
+    body = (f"{_award_line(lead)}\n\n{total} {trade} tenders are open right now. These close soonest:\n\n{lines}\n\n"
+            f"Want me to check these three against {co}{chr(39) if co.endswith('s') else chr(39) + 's'} ABN, GST and insurance? Reply \"yes\".")
     return (f"{trade} tenders closing soon", f"Hi {f},\n\n{body}\n\n{OPT}\n\n{_sign(lead)}", None)
 
 def _row(t):
