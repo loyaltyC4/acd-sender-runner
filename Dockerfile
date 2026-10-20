@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 WORKDIR /app
-COPY send.py railway_entry.py tenderwin_seq.py ./
+COPY send.py railway_entry.py tenderwin_seq.py acd_html.py ./
 # seed campaigns into the image (runtime copies them to the volume on first boot)
 COPY campaigns/ ./campaigns/
 ENV STATE_DIR=/data

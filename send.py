@@ -407,6 +407,12 @@ def main():
         res = SEQUENCES[cname]({**lead, "_from": inbox}, step)
         subj, body = res[0], res[1]
         body_html = res[2] if len(res) > 2 else None
+        if body_html is None and not cname.startswith("tenderwin") and step == 2:
+            try:
+                import acd_html
+                body_html = acd_html.render(subj, body, {**lead, "_from": inbox})
+            except Exception as _e:
+                print(f"  WARN acd_html failed, sending plain text: {_e}")
         to = (lead.get("email") or "").strip().lower()
         if DRY_RUN:
             print(f"DRY {inbox} -> {to} ({cname} step{step}) :: {subj}"); continue
