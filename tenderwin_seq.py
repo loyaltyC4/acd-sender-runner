@@ -50,8 +50,11 @@ def _first(lead):
     return n[0].capitalize() if n else ((lead.get("company") or "").strip() + " team" if lead.get("company") else "there")
 
 def _sign(lead):
-    n = re.split(r"[._\-0-9]", (lead.get("_from") or "").split("@")[0])[0].capitalize() or "The team"
-    return f"{n}\nTenderWin | tenderwin.com.au"
+    local = (lead.get("_from") or "").split("@")[0]
+    first = re.split(r"[._\-0-9]", local)[0].lower()
+    if not first or first == "tenderwin":          # role inboxes such as tenderwin-bids / tenderwin-quotes
+        return "The TenderWin team\ntenderwin.com.au"
+    return f"{first.capitalize()}\nTenderWin | tenderwin.com.au"
 OPT = 'P.S. Not relevant? Reply "remove" and you will not hear from me again.'
 
 def _hook(lead):
